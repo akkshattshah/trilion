@@ -279,8 +279,8 @@ app.get('/clips-list', (req, res) => {
 });
 
 // Enhanced viral analysis endpoint
-app.post('/analyze-viral', async (req, res) => {
-  console.log('POST /analyze-viral received');
+app.post('/analyze', async (req, res) => {
+  console.log('POST /analyze received');
   const { ytLink, numClips = 3, clipDuration = 30 } = req.body;
   
   if (!ytLink) {
@@ -378,7 +378,7 @@ app.post('/analyze-viral', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error in /analyze-viral:', error);
+    console.error('Error in /analyze:', error);
     res.status(500).json({
       error: 'Enhanced viral analysis failed',
       details: error.message

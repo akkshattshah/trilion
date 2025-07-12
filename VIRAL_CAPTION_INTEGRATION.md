@@ -21,7 +21,7 @@ Your video clipper app now includes an **ultra-engaging viral caption system** t
 
 ### 🎬 Backend Features
 - **New API Endpoints**:
-  - `POST /analyze-viral`: Create viral clips directly from YouTube
+  - `POST /analyze`: Create viral clips directly from YouTube
   - `POST /add-viral-captions`: Add viral captions to existing clips
   - `GET /clips-list`: List all clips with viral status
 - **Integrated Processing**: Whisper AI + caption splitting + FFmpeg styling
@@ -118,7 +118,7 @@ npm start
 
 ### API Endpoints
 
-#### POST /analyze-viral
+#### POST /analyze
 Creates viral clips directly from YouTube URL
 ```json
 {

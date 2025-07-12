@@ -639,9 +639,9 @@ app.post('/add-viral-captions', async (req, res) => {
 });
 
 // Create viral clips directly from YouTube link
-app.post('/analyze-viral', async (req, res) => {
-  console.log('DEBUG: /analyze-viral req.body:', req.body);
-  console.log('POST /analyze-viral received');
+app.post('/analyze', async (req, res) => {
+  console.log('DEBUG: /analyze req.body:', req.body);
+  console.log('POST /analyze received');
   const { ytLink, numClips = 3, clipDuration = 30, captionStyle = 'single-word', fontStyle = 'impact', processingMode = 'auto' } = req.body;
   
   if (!ytLink) {

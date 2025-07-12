@@ -87,7 +87,7 @@ cd server && node index.js
 
 ### **API Endpoint (Enhanced)**
 ```javascript
-POST /analyze-viral
+POST /analyze
 {
   "url": "https://youtube.com/watch?v=...",
   "numClips": 3,

@@ -133,7 +133,7 @@ This app is configured for easy deployment on Render using Blueprint.
 
 ### Video Analysis
 - `POST /analyze` - Basic video analysis
-- `POST /analyze-viral` - Advanced viral content analysis
+- `POST /analyze` - Advanced viral content analysis
 - `GET /clips-list` - List all generated clips
 
 ### YouTube Integration
