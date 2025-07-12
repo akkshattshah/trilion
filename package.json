@@ -3,10 +3,22 @@
   "version": "1.0.0",
   "description": "Trilion Viral Video Generator",
   "scripts": {
-    "build": "cd server && npm install",
+    "build": "npm install && cd server && npm install",
     "start": "cd server && node index.js",
     "build:frontend": "cd frontend && npm install && npm run build",
     "install:all": "cd server && npm install && cd ../frontend && npm install"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.56.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "multer": "^2.0.1",
+    "openai": "^5.9.0",
+    "googleapis": "^128.0.0",
+    "ytdl-core": "^4.11.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "axios": "^1.6.0",
+    "fs-extra": "^11.1.1"
   },
   "engines": {
     "node": ">=16.0.0"
