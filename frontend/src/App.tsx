@@ -108,7 +108,6 @@ function App() {
     setError(null);
 
     try {
-      console.log('Sending request to server...');
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         headers: {
@@ -125,28 +124,22 @@ function App() {
         }),
       });
 
-      console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Response data:', data);
       
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Server error occurred');
       }
       
       if (data.clips) {
-        console.log('Setting clips:', data.clips);
         setClips(data.clips);
       } else {
-        console.warn('No clips returned from server');
         setError('No clips were generated. Please try again.');
       }
     } catch (error) {
-      console.error('Error during fetch:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       setError(errorMessage);
       
       if (demoMode) {
-        console.log('Demo mode failed, using mock data...');
         // Fallback to mock data for demo mode
         const mockClips = [];
         for (let i = 0; i < numClips; i++) {
@@ -170,7 +163,6 @@ function App() {
         
         setClips(mockClips);
         setError(null);
-        console.log('Demo clips generated:', mockClips);
       }
     } finally {
       setIsLoading(false);
@@ -183,14 +175,13 @@ function App() {
       try {
         const response = await fetch(`${API_URL}/`);
         const data = await response.json();
-        console.log('Server test successful');
+        // Server test successful
         // Also test clips endpoint
         const clipsResponse = await fetch(`${API_URL}/clips-list`);
         const clipsData = await clipsResponse.json();
-        console.log('Available clips count:', clipsData.clips?.length || 0);
+        // Available clips count: clipsData.clips?.length || 0
       } catch (error) {
-        console.error('Server test failed:', error);
-        console.log('Backend not available - using mock mode');
+        // Server test failed - using mock mode
       }
     };
     testServer();
@@ -199,12 +190,10 @@ function App() {
   // Initialize loading state when clips change
   React.useEffect(() => {
     if (clips.length > 0) {
-      console.log('🎬 Clips received:', clips.length);
       setLoadingVideos(new Set(clips.map((_, index) => index)));
       
       // Fallback: Clear loading states after 30 seconds to prevent stuck loading
       const fallbackTimeout = setTimeout(() => {
-        console.log('⏰ Fallback: Clearing all loading states after 30 seconds');
         setLoadingVideos(new Set());
       }, 30000);
       
@@ -214,7 +203,6 @@ function App() {
 
   // Handle title generation for a specific clip
   const handleTitlesGenerated = (clipIndex: number, titles: any[]) => {
-    console.log(`✨ Titles generated for clip ${clipIndex}:`, titles.length);
     setClipTitles(prev => ({
       ...prev,
       [clipIndex]: titles
