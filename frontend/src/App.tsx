@@ -169,11 +169,11 @@ function App() {
       try {
         const response = await fetch(`${API_URL}/`);
         const data = await response.json();
-        console.log('Server test successful:', data);
+        console.log('Server test successful');
         // Also test clips endpoint
         const clipsResponse = await fetch(`${API_URL}/clips-list`);
         const clipsData = await clipsResponse.json();
-        console.log('Available clips:', clipsData);
+        console.log('Available clips count:', clipsData.clips?.length || 0);
       } catch (error) {
         console.error('Server test failed:', error);
         console.log('Backend not available - using mock mode');
@@ -185,11 +185,7 @@ function App() {
   // Initialize loading state when clips change
   React.useEffect(() => {
     if (clips.length > 0) {
-      console.log('🎬 Clips received:', clips.map((clip, index) => ({ 
-        index, 
-        filename: clip.filename, 
-        url: `${API_URL}/clips/${clip.filename}` 
-      })));
+      console.log('🎬 Clips received:', clips.length);
       setLoadingVideos(new Set(clips.map((_, index) => index)));
       
       // Fallback: Clear loading states after 30 seconds to prevent stuck loading
@@ -204,7 +200,7 @@ function App() {
 
   // Handle title generation for a specific clip
   const handleTitlesGenerated = (clipIndex: number, titles: any[]) => {
-    console.log(`✨ Titles generated for clip ${clipIndex}:`, titles);
+    console.log(`✨ Titles generated for clip ${clipIndex}:`, titles.length);
     setClipTitles(prev => ({
       ...prev,
       [clipIndex]: titles
