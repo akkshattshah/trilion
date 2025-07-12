@@ -11,24 +11,36 @@ const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const { spawn } = require('child_process');
 
-// Validate required environment variables
+// Initialize AI clients only when needed
+let openai = null;
+let anthropic = null;
+
+function initializeAIClients() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  
+  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
+    anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY
+    });
+  }
+}
+
+// Check for required environment variables (warn but don't exit)
 const requiredEnvVars = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingVars);
-  console.error('Please set the following environment variables:');
-  missingVars.forEach(varName => console.error(`  - ${varName}`));
-  process.exit(1);
+  console.warn('⚠️  Missing environment variables:', missingVars);
+  console.warn('Some features may be limited. Set these for full functionality:');
+  missingVars.forEach(varName => console.warn(`  - ${varName}`));
+} else {
+  console.log('✅ All AI API keys configured');
+  initializeAIClients();
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
-});
 
 const app = express();
 
@@ -425,6 +437,18 @@ app.post('/analyze', async (req, res) => {
       console.log('AI analysis completed:', analysisResult);
     } catch (pythonError) {
       console.error('Python analysis failed, falling back to AI analysis:', pythonError);
+      
+      // Check if AI clients are available
+      if (!process.env.OPENAI_API_KEY || !process.env.ANTHROPIC_API_KEY) {
+        throw new Error('AI analysis requires OPENAI_API_KEY and ANTHROPIC_API_KEY environment variables');
+      }
+      
+      // Initialize AI clients if needed
+      initializeAIClients();
+      
+      if (!openai || !anthropic) {
+        throw new Error('Failed to initialize AI clients');
+      }
       
       // Fallback: Use AI analysis directly
       const transcription = await openai.audio.transcriptions.create({

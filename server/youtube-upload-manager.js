@@ -32,9 +32,17 @@ const youtube = google.youtube({
 // Store tokens (in production, use a database)
 const userTokens = new Map();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI client only when needed
+let openai = null;
+
+function initializeOpenAI() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  return openai;
+}
 
 class YouTubeUploadManager {
   constructor() {
@@ -104,16 +112,19 @@ class YouTubeUploadManager {
           srtText = srtContent.replace(/\d+\n/g, '').replace(/\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\n/g, '').replace(/\n+/g, ' ').trim();
         }
         if (srtText.length > 0) {
-          const prompt = `You are a viral video expert. Read the following transcript and generate a catchy, viral YouTube Shorts title (max 60 characters, use emojis if appropriate, make it irresistible to click):\n\nTranscript: ${srtText}`;
-          const aiResult = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 32,
-          });
-          if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
-            aiTitle = aiResult.choices[0].message.content.trim().replace(/\n/g, ' ');
-            // Truncate if too long
-            if (aiTitle.length > 60) aiTitle = aiTitle.slice(0, 57) + '...';
+          const openaiClient = initializeOpenAI();
+          if (openaiClient) {
+            const prompt = `You are a viral video expert. Read the following transcript and generate a catchy, viral YouTube Shorts title (max 60 characters, use emojis if appropriate, make it irresistible to click):\n\nTranscript: ${srtText}`;
+            const aiResult = await openaiClient.chat.completions.create({
+              model: 'gpt-3.5-turbo',
+              messages: [{ role: 'user', content: prompt }],
+              max_tokens: 32,
+            });
+            if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
+              aiTitle = aiResult.choices[0].message.content.trim().replace(/\n/g, ' ');
+              // Truncate if too long
+              if (aiTitle.length > 60) aiTitle = aiTitle.slice(0, 57) + '...';
+            }
           }
         }
       } catch (err) {
@@ -124,14 +135,17 @@ class YouTubeUploadManager {
       // --- AI-Generated Hashtags ---
       let aiHashtags = [];
       try {
-        const prompt = `Generate 5 catchy, viral hashtags for a YouTube Short with the following title and description. Only return the hashtags, separated by spaces.\n\nTitle: ${aiTitle}\nDescription: ${description}`;
-        const aiResult = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 32,
-        });
-        if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
-          aiHashtags = aiResult.choices[0].message.content.match(/#[\w]+/g) || [];
+        const openaiClient = initializeOpenAI();
+        if (openaiClient) {
+          const prompt = `Generate 5 catchy, viral hashtags for a YouTube Short with the following title and description. Only return the hashtags, separated by spaces.\n\nTitle: ${aiTitle}\nDescription: ${description}`;
+          const aiResult = await openaiClient.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 32,
+          });
+          if (aiResult.choices && aiResult.choices[0] && aiResult.choices[0].message) {
+            aiHashtags = aiResult.choices[0].message.content.match(/#[\w]+/g) || [];
+          }
         }
       } catch (err) {
         console.error('AI hashtag generation failed:', err.message);
