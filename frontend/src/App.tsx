@@ -99,10 +99,13 @@ function App() {
   const [uploadingClipIndex, setUploadingClipIndex] = useState<number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<{[key: number]: string}>({});
   const [clipTitles, setClipTitles] = useState<{[key: number]: any[]}>({});
+  const [demoMode, setDemoMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       console.log('Sending request to server...');
@@ -112,12 +115,13 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ytLink: url,
+          ytLink: demoMode ? '' : url,
           numClips: numClips,
           clipDuration: clipDuration,
           captionStyle: captionsEnabled ? captionStyle : 'none',
           fontStyle: 'impact',
-          processingMode: processingMode
+          processingMode: processingMode,
+          demoMode: demoMode
         }),
       });
 
@@ -125,39 +129,49 @@ function App() {
       const data = await response.json();
       console.log('Response data:', data);
       
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Server error occurred');
+      }
+      
       if (data.clips) {
         console.log('Setting clips:', data.clips);
         setClips(data.clips);
       } else {
         console.warn('No clips returned from server');
+        setError('No clips were generated. Please try again.');
       }
     } catch (error) {
       console.error('Error during fetch:', error);
-      console.log('Backend not available, using mock data...');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      setError(errorMessage);
       
-      // Fallback to mock data when backend is not available
-      const mockClips = [];
-      for (let i = 0; i < numClips; i++) {
-        const startTime = Math.floor(Math.random() * 300) + 60;
-        const endTime = startTime + clipDuration;
+      if (demoMode) {
+        console.log('Demo mode failed, using mock data...');
+        // Fallback to mock data for demo mode
+        const mockClips = [];
+        for (let i = 0; i < numClips; i++) {
+          const startTime = i * clipDuration;
+          const endTime = startTime + clipDuration;
+          
+          mockClips.push({
+            id: Date.now() + i,
+            title: `🔥 VIRAL MOMENT ${i + 1} - MUST WATCH! 🔥`,
+            description: `Demo viral clip ${i + 1} - This would be AI-generated content based on the video analysis`,
+            start_time: `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')}`,
+            end_time: `${Math.floor(endTime / 60)}:${(endTime % 60).toString().padStart(2, '0')}`,
+            duration: clipDuration,
+            timestamp: Date.now(),
+            filename: `demo_clip_${i + 1}.mp4`,
+            viral_score: Math.floor(Math.random() * 40) + 60,
+            platform: 'tiktok',
+            demo: true
+          });
+        }
         
-        mockClips.push({
-          id: Date.now() + i,
-          title: `Viral Moment ${i + 1} - This Will Blow Your Mind! 😱`,
-          description: `This clip has viral potential due to its emotional impact and relatability.`,
-          start_time: `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')}`,
-          end_time: `${Math.floor(endTime / 60)}:${(endTime % 60).toString().padStart(2, '0')}`,
-          duration: clipDuration,
-          timestamp: Date.now(),
-          filename: `mock_clip_${i + 1}.mp4`,
-          viral_score: 8.5 + (Math.random() * 1.5),
-          thumbnail_url: `https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Viral+Clip+${i + 1}`,
-          download_url: `https://example.com/clip_${i}.mp4`
-        });
+        setClips(mockClips);
+        setError(null);
+        console.log('Demo clips generated:', mockClips);
       }
-      
-      setClips(mockClips);
-      console.log('Mock clips generated:', mockClips);
     } finally {
       setIsLoading(false);
     }
@@ -354,21 +368,37 @@ function App() {
             </div>
             
             <form onSubmit={handleSubmit} className="generator-form">
+              {/* Error Display */}
+              {error && (
+                <div className="error-message" style={{
+                  background: '#fee',
+                  border: '1px solid #fcc',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  color: '#c33',
+                  fontSize: '14px'
+                }}>
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
               <div className="input-container">
                 <div className="input-wrapper">
                   <input
                     type="text"
                     className="url-input"
-                    placeholder="Paste your YouTube URL here..."
+                    placeholder={demoMode ? "Demo mode - no URL needed" : "Paste your YouTube URL here..."}
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    required
+                    required={!demoMode}
+                    disabled={demoMode}
                   />
                   <div className="input-icon">
                     <VideoIcon />
                   </div>
                 </div>
-                <button type="submit" className="submit-button" disabled={isLoading || !url}>
+                <button type="submit" className="submit-button" disabled={isLoading || (!url && !demoMode)}>
                   {isLoading ? (
                     <>
                       <LoadingIcon />
@@ -377,10 +407,38 @@ function App() {
                   ) : (
                     <>
                       <RocketIcon />
-                      <span>Create Viral Clips</span>
+                      <span>{demoMode ? 'Try Demo Mode' : 'Create Viral Clips'}</span>
                     </>
                   )}
                 </button>
+              </div>
+              
+              {/* Demo Mode Toggle */}
+              <div className="demo-mode-toggle" style={{
+                marginTop: '12px',
+                padding: '8px 12px',
+                background: '#f8f9fa',
+                borderRadius: '6px',
+                border: '1px solid #e9ecef'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={demoMode}
+                    onChange={(e) => {
+                      setDemoMode(e.target.checked);
+                      if (e.target.checked) {
+                        setError(null);
+                      }
+                    }}
+                  />
+                  <span>🎬 Try Demo Mode (no YouTube URL needed)</span>
+                </label>
+                {demoMode && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                    Demo mode generates sample clips to test the interface without downloading videos.
+                  </div>
+                )}
               </div>
               
               {/* Options Section */}
