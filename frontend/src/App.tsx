@@ -615,59 +615,42 @@ function App() {
                             style={{position: 'relative', zIndex: 1}}
                             key={`video-${index}-${clip.filename}`}
                             onLoadStart={() => {
-                              console.log(`🔄 Video ${index + 1} loading started - ${clip.filename}`);
                               setLoadingVideos(prev => {
                                 const newSet = new Set(prev);
                                 newSet.add(index);
-                                console.log(`🔄 Loading state updated for video ${index + 1}: true`);
                                 return newSet;
                               });
                             }}
                             onLoadedData={() => {
-                              console.log(`✅ Video ${index + 1} data loaded successfully - ${clip.filename}`);
                               setLoadingVideos(prev => {
                                 const newSet = new Set(prev);
                                 newSet.delete(index);
-                                console.log(`✅ Loading state updated for video ${index + 1}: false`);
                                 return newSet;
                               });
                             }}
                             onError={(e) => {
-                              console.error(`❌ Video ${index + 1} error - ${clip.filename}:`, e);
-                              const videoElement = e.target as HTMLVideoElement;
-                              if (videoElement && videoElement.error) {
-                                console.error(`❌ Video ${index + 1} error details:`, {
-                                  code: videoElement.error.code,
-                                  message: videoElement.error.message,
-                                  url: `${API_URL}/clips/${clip.filename}`
-                                });
-                              }
                               setLoadingVideos(prev => {
                                 const newSet = new Set(prev);
                                 newSet.delete(index);
-                                console.log(`❌ Loading state updated for video ${index + 1}: false (error)`);
                                 return newSet;
                               });
                             }}
                             onCanPlay={() => {
-                              console.log(`🎬 Video ${index + 1} can play - ${clip.filename}`);
                               setLoadingVideos(prev => {
                                 const newSet = new Set(prev);
                                 newSet.delete(index);
-                                console.log(`🎬 Loading state updated for video ${index + 1}: false (can play)`);
                                 return newSet;
                               });
                             }}
                             onLoadedMetadata={() => {
-                              console.log(`📊 Video ${index + 1} metadata loaded - ${clip.filename}`);
+                              // Metadata loaded
                             }}
                           >
                             <source 
                               src={`${API_URL}/clips/${clip.filename}`} 
                               type="video/mp4"
                               onError={(e) => {
-                                console.error(`🚨 Source error for ${clip.filename}:`, e);
-                                console.error(`🚨 Failed URL: ${API_URL}/clips/${clip.filename}`);
+                                // Source error
                               }}
                             />
                             Your browser does not support the video tag.
@@ -703,7 +686,6 @@ function App() {
                               className="action-button download"
                               download={`viral_clip_${index + 1}.mp4`}
                               onClick={(e) => {
-                                console.log(`Downloading clip: ${clip.filename}`);
                                 // Test if file exists first
                                 fetch(`${API_URL}/clips/${clip.filename}`, {method: 'HEAD'})
                                   .then(response => {
@@ -713,7 +695,6 @@ function App() {
                                     }
                                   })
                                   .catch(error => {
-                                    console.error('Download test failed:', error);
                                     e.preventDefault();
                                     alert('Cannot access file');
                                   });
@@ -726,7 +707,6 @@ function App() {
                               className="action-button share"
                               onClick={() => {
                                 const clipUrl = `${API_URL}/clips/${clip.filename}`;
-                                console.log('Sharing clip:', clipUrl);
                                 if (navigator.share) {
                                   navigator.share({
                                     title: `Viral Clip #${index + 1}`,

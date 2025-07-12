@@ -64,7 +64,7 @@ const TitleGenerator: React.FC<TitleGeneratorProps> = ({ clipFilename, onTitlesG
     setShowResults(false);
 
     try {
-      console.log(`🎯 Generating titles for ${clipFilename} (${platform}, ${style})`);
+      // Generating titles for clip
       
       const response = await fetch(`${API_URL}/generate-titles-for-clip`, {
         method: 'POST',
@@ -80,7 +80,7 @@ const TitleGenerator: React.FC<TitleGeneratorProps> = ({ clipFilename, onTitlesG
       });
 
       const data: TitleGenerationResponse = await response.json();
-      console.log('✅ Title generation response:', data);
+              // Title generation successful
 
       if (data.success && data.titles) {
         setGeneratedTitles(data.titles);
@@ -89,11 +89,11 @@ const TitleGenerator: React.FC<TitleGeneratorProps> = ({ clipFilename, onTitlesG
         setShowResults(true);
         onTitlesGenerated(data.titles);
       } else {
-        console.error('❌ Title generation failed:', data);
+        // Title generation failed
         alert('Failed to generate titles. Please try again.');
       }
     } catch (error) {
-      console.error('❌ Error generating titles:', error);
+      // Error generating titles
       alert('Error generating titles. Please check your connection.');
     } finally {
       setIsGenerating(false);

@@ -38,7 +38,7 @@ const YouTubeUpload: React.FC = () => {
       const data = await response.json();
       setIsAuthenticated(data.authenticated);
     } catch (error) {
-      console.error('Failed to check auth status:', error);
+      // Failed to check auth status
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ const YouTubeUpload: React.FC = () => {
         isViral: clip.isViral
       })));
     } catch (error) {
-      console.error('Failed to load clips:', error);
+      // Failed to load clips
     }
   };
 
@@ -69,7 +69,7 @@ const YouTubeUpload: React.FC = () => {
         window.open(data.authUrl, '_blank');
       }
     } catch (error) {
-      console.error('Failed to get auth URL:', error);
+      // Failed to get auth URL
     }
   };
 
@@ -97,7 +97,7 @@ const YouTubeUpload: React.FC = () => {
         const clip = clips.find(c => c.filename === clipFilename);
         const title = clip?.title || `Viral Clip - ${clipFilename}`;
         
-        console.log(`Uploading ${clipFilename} with title: ${title}`);
+        // Uploading clip
 
         const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
         const response = await fetch(`${API_URL}/upload/youtube-shorts`, {
@@ -130,7 +130,7 @@ const YouTubeUpload: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Upload failed:', error);
+      // Upload failed
       alert('❌ Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
@@ -163,7 +163,7 @@ const YouTubeUpload: React.FC = () => {
         alert('❌ Failed to make video public: ' + result.error);
       }
     } catch (error) {
-      console.error('Failed to make video public:', error);
+      // Failed to make video public
       alert('❌ Failed to make video public');
     }
   };
