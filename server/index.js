@@ -202,43 +202,123 @@ async function downloadWithAlternativeYtdl(ytLink, outputPath) {
   });
 }
 
-// Helper function to extract audio using fluent-ffmpeg
+// Helper function to extract audio using fluent-ffmpeg with better error handling
 async function extractAudio(videoPath, audioPath) {
   return new Promise((resolve, reject) => {
     console.log('Extracting audio...');
     
+    // Check if input file exists
+    if (!fs.existsSync(videoPath)) {
+      reject(new Error(`Input video file not found: ${videoPath}`));
+      return;
+    }
+    
+    // Get file size to check if it's valid
+    const stats = fs.statSync(videoPath);
+    if (stats.size === 0) {
+      reject(new Error('Input video file is empty'));
+      return;
+    }
+    
     ffmpeg(videoPath)
       .toFormat('mp3')
+      .audioChannels(2)
+      .audioFrequency(44100)
+      .audioQuality(0)
+      .outputOptions([
+        '-acodec', 'libmp3lame',
+        '-ar', '44100',
+        '-ac', '2',
+        '-b:a', '192k'
+      ])
+      .on('start', (commandLine) => {
+        console.log('FFmpeg command:', commandLine);
+      })
+      .on('progress', (progress) => {
+        console.log('Processing: ' + progress.percent + '% done');
+      })
       .on('end', () => {
         console.log('Audio extraction completed');
         resolve();
       })
       .on('error', (error) => {
         console.error('Audio extraction error:', error);
-        reject(error);
+        // Try alternative approach if first fails
+        console.log('Trying alternative audio extraction...');
+        ffmpeg(videoPath)
+          .toFormat('wav')
+          .on('end', () => {
+            console.log('Alternative audio extraction completed (WAV)');
+            resolve();
+          })
+          .on('error', (altError) => {
+            console.error('Alternative audio extraction also failed:', altError);
+            reject(new Error(`Audio extraction failed: ${error.message}. Alternative method also failed: ${altError.message}`));
+          })
+          .save(audioPath.replace('.mp3', '.wav'));
       })
       .save(audioPath);
   });
 }
 
-// Helper function to create video clips using fluent-ffmpeg
+// Helper function to create video clips using fluent-ffmpeg with better error handling
 async function createVideoClip(inputPath, outputPath, startTime, duration) {
   return new Promise((resolve, reject) => {
     console.log(`Creating clip: ${startTime}s for ${duration}s`);
+    
+    // Check if input file exists
+    if (!fs.existsSync(inputPath)) {
+      reject(new Error(`Input video file not found: ${inputPath}`));
+      return;
+    }
+    
+    // Get file size to check if it's valid
+    const stats = fs.statSync(inputPath);
+    if (stats.size === 0) {
+      reject(new Error('Input video file is empty'));
+      return;
+    }
     
     ffmpeg(inputPath)
       .setStartTime(startTime)
       .setDuration(duration)
       .videoCodec('libx264')
       .audioCodec('aac')
-      .outputOptions(['-preset', 'fast', '-crf', '23'])
+      .outputOptions([
+        '-preset', 'fast',
+        '-crf', '23',
+        '-movflags', '+faststart',
+        '-pix_fmt', 'yuv420p'
+      ])
+      .on('start', (commandLine) => {
+        console.log('FFmpeg clip command:', commandLine);
+      })
+      .on('progress', (progress) => {
+        console.log('Clip processing: ' + progress.percent + '% done');
+      })
       .on('end', () => {
         console.log('Video clip created successfully');
         resolve();
       })
       .on('error', (error) => {
         console.error('Video clip creation error:', error);
-        reject(error);
+        // Try alternative approach with different settings
+        console.log('Trying alternative clip creation...');
+        ffmpeg(inputPath)
+          .setStartTime(startTime)
+          .setDuration(duration)
+          .videoCodec('libx264')
+          .audioCodec('copy')
+          .outputOptions(['-preset', 'ultrafast', '-crf', '28'])
+          .on('end', () => {
+            console.log('Alternative video clip created successfully');
+            resolve();
+          })
+          .on('error', (altError) => {
+            console.error('Alternative clip creation also failed:', altError);
+            reject(new Error(`Video clip creation failed: ${error.message}. Alternative method also failed: ${altError.message}`));
+          })
+          .save(outputPath);
       })
       .save(outputPath);
   });
