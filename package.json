@@ -1,0 +1,14 @@
+{
+  "name": "trilion-app",
+  "version": "1.0.0",
+  "description": "Trilion Viral Video Generator",
+  "scripts": {
+    "build": "cd server && npm install",
+    "start": "cd server && node index.js",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "install:all": "cd server && npm install && cd ../frontend && npm install"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

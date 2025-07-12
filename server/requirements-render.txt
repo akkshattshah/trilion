@@ -1,0 +1,21 @@
+# Core packages that work on Render without compilation
+opencv-python-headless==4.8.1.78
+numpy==1.24.3
+requests>=2.31.0
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+pillow>=10.0.0
+
+# Audio processing (lighter alternatives)
+pydub>=0.25.1
+librosa>=0.10.0
+
+# AI/ML packages (CPU-only versions)
+torch==2.1.0+cpu
+torchaudio==2.1.0+cpu
+transformers>=4.30.0
+openai-whisper>=20231117
+
+# Optional: Add these if needed for basic functionality
+# scipy>=1.10.0
+# mediapipe>=0.10.0 
