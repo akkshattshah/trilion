@@ -16,6 +16,7 @@
     "openai": "^5.9.0",
     "googleapis": "^128.0.0",
     "ytdl-core": "^4.11.5",
+    "youtube-dl-exec": "^2.5.6",
     "fluent-ffmpeg": "^2.1.2",
     "axios": "^1.6.0",
     "fs-extra": "^11.1.1"
