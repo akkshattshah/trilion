@@ -124,7 +124,12 @@ function App() {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        throw new Error('Server returned invalid JSON response. Please try again.');
+      }
       
       if (!response.ok) {
         throw new Error(data.error || data.details || 'Server error occurred');
@@ -174,12 +179,26 @@ function App() {
     const testServer = async () => {
       try {
         const response = await fetch(`${API_URL}/`);
-        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          throw new Error('Server returned invalid JSON');
+        }
         // Server test successful
         // Also test clips endpoint
-        const clipsResponse = await fetch(`${API_URL}/clips-list`);
-        const clipsData = await clipsResponse.json();
-        // Available clips count: clipsData.clips?.length || 0
+        try {
+          const clipsResponse = await fetch(`${API_URL}/clips-list`);
+          if (clipsResponse.ok) {
+            const clipsData = await clipsResponse.json();
+            // Available clips count: clipsData.clips?.length || 0
+          }
+        } catch (clipsError) {
+          // Clips endpoint not available, but main server is working
+        }
       } catch (error) {
         // Server test failed - using mock mode
       }

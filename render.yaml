@@ -33,4 +33,4 @@ services:
     staticPublishPath: frontend/build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://trilion-backend.onrender.com 
+        value: https://trilion-backend-bojb.onrender.com 
