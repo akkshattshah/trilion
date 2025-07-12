@@ -52,34 +52,63 @@ if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
 
-// Helper function to download video using ytdl-core
+// Helper function to download video using ytdl-core with enhanced error handling
 async function downloadVideo(ytLink, outputPath) {
   return new Promise((resolve, reject) => {
     console.log(`Downloading video from: ${ytLink}`);
     
-    const video = ytdl(ytLink, {
+    // Enhanced options for better compatibility
+    const options = {
       quality: 'highestaudio',
-      filter: 'audioonly'
-    });
+      filter: 'audioonly',
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      }
+    };
     
-    const writeStream = fs.createWriteStream(outputPath);
-    
-    video.pipe(writeStream);
-    
-    video.on('end', () => {
-      console.log('Video download completed');
-      resolve();
-    });
-    
-    video.on('error', (error) => {
-      console.error('Video download error:', error);
-      reject(error);
-    });
-    
-    writeStream.on('error', (error) => {
-      console.error('Write stream error:', error);
-      reject(error);
-    });
+    try {
+      const video = ytdl(ytLink, options);
+      
+      const writeStream = fs.createWriteStream(outputPath);
+      
+      video.pipe(writeStream);
+      
+      video.on('end', () => {
+        console.log('Video download completed');
+        resolve();
+      });
+      
+      video.on('error', (error) => {
+        console.error('Video download error:', error);
+        
+        // Enhanced error handling for common YouTube issues
+        if (error.statusCode === 410) {
+          reject(new Error('Video is unavailable or private. Please check the YouTube link and try again.'));
+        } else if (error.statusCode === 403) {
+          reject(new Error('Access denied. This video may be age-restricted or region-blocked.'));
+        } else if (error.statusCode === 404) {
+          reject(new Error('Video not found. Please check the YouTube link.'));
+        } else {
+          reject(new Error(`YouTube download failed: ${error.message}`));
+        }
+      });
+      
+      writeStream.on('error', (error) => {
+        console.error('Write stream error:', error);
+        reject(new Error(`File write error: ${error.message}`));
+      });
+      
+      // Add timeout
+      setTimeout(() => {
+        video.destroy();
+        reject(new Error('Download timeout - video may be too large or unavailable'));
+      }, 300000); // 5 minutes timeout
+      
+    } catch (error) {
+      reject(new Error(`Failed to start download: ${error.message}`));
+    }
   });
 }
 
@@ -219,6 +248,48 @@ app.get('/test', (req, res) => {
   });
 });
 
+// YouTube link validation endpoint
+app.post('/validate-youtube', async (req, res) => {
+  const { ytLink } = req.body;
+  
+  if (!ytLink) {
+    return res.status(400).json({ error: 'No YouTube link provided' });
+  }
+  
+  try {
+    console.log(`Validating YouTube link: ${ytLink}`);
+    
+    // Try to get video info without downloading
+    const info = await ytdl.getInfo(ytLink);
+    
+    res.json({
+      valid: true,
+      title: info.videoDetails.title,
+      duration: info.videoDetails.lengthSeconds,
+      author: info.videoDetails.author.name,
+      viewCount: info.videoDetails.viewCount,
+      message: 'YouTube link is valid and accessible'
+    });
+  } catch (error) {
+    console.error('YouTube validation error:', error);
+    
+    let errorMessage = 'YouTube link validation failed';
+    if (error.statusCode === 410) {
+      errorMessage = 'Video is unavailable or private';
+    } else if (error.statusCode === 403) {
+      errorMessage = 'Video is age-restricted or region-blocked';
+    } else if (error.statusCode === 404) {
+      errorMessage = 'Video not found';
+    }
+    
+    res.status(400).json({
+      valid: false,
+      error: errorMessage,
+      details: error.message
+    });
+  }
+});
+
 // Enhanced static file serving with proper video headers
 app.use('/clips', (req, res, next) => {
   // Set proper headers for video streaming
@@ -251,12 +322,13 @@ app.get('/download/:filename', (req, res) => {
 app.post('/analyze', async (req, res) => {
   console.log('POST /analyze received');
   console.log('Request body:', req.body);
-  const { ytLink, numClips = 3, clipDuration = 30 } = req.body;
+  const { ytLink, numClips = 3, clipDuration = 30, demoMode = false } = req.body;
   console.log('Received YouTube link:', ytLink);
   console.log('Number of clips:', numClips);
   console.log('Clip duration:', clipDuration);
+  console.log('Demo mode:', demoMode);
   
-  if (!ytLink) {
+  if (!ytLink && !demoMode) {
     return res.status(400).json({ error: 'No YouTube link provided' });
   }
 
@@ -268,10 +340,76 @@ app.post('/analyze', async (req, res) => {
     const videoPath = path.join(mediaDir, videoFile);
     const audioPath = path.join(mediaDir, audioFile);
     
-    console.log('Starting video download...');
+    let videoDownloaded = false;
     
-    // Download video using ytdl-core
-    await downloadVideo(ytLink, videoPath);
+    if (demoMode) {
+      console.log('Running in demo mode - skipping video download');
+      videoDownloaded = true;
+    } else {
+      console.log('Starting video download...');
+      
+      try {
+        // Download video using ytdl-core
+        await downloadVideo(ytLink, videoPath);
+        videoDownloaded = true;
+        console.log('Video downloaded successfully');
+      } catch (downloadError) {
+        console.error('Video download failed:', downloadError.message);
+        
+        // Return helpful error message
+        return res.status(400).json({
+          error: 'Video download failed',
+          details: downloadError.message,
+          suggestions: [
+            'Check if the YouTube link is valid and accessible',
+            'The video might be private, age-restricted, or region-blocked',
+            'Try a different YouTube video',
+            'Contact support if the issue persists'
+          ]
+        });
+      }
+    }
+    
+    if (demoMode) {
+      console.log('Demo mode: Generating sample clips...');
+      
+      // Generate demo clips
+      const clips = [];
+      for (let i = 0; i < numClips; i++) {
+        const startTime = i * clipDuration;
+        const endTime = startTime + clipDuration;
+        
+        clips.push({
+          id: i + 1,
+          filename: `demo_clip_${timestamp}_${i + 1}.mp4`,
+          url: `/clips/demo_clip_${timestamp}_${i + 1}.mp4`,
+          download_url: `/download/demo_clip_${timestamp}_${i + 1}.mp4`,
+          start_time: `${Math.floor(startTime / 60)}:${(startTime % 60).toString().padStart(2, '0')}`,
+          end_time: `${Math.floor(endTime / 60)}:${(endTime % 60).toString().padStart(2, '0')}`,
+          duration: clipDuration,
+          title: `🔥 VIRAL MOMENT ${i + 1} - MUST WATCH! 🔥`,
+          description: `Demo viral clip ${i + 1} - This would be AI-generated content based on the video analysis`,
+          viral_score: Math.floor(Math.random() * 40) + 60, // 60-100
+          platform: 'tiktok',
+          demo: true
+        });
+      }
+      
+      console.log(`Demo mode completed. Generated ${clips.length} sample clips.`);
+      
+      return res.json({
+        success: true,
+        message: `Demo mode: Generated ${clips.length} sample viral clips!`,
+        clips: clips,
+        analysis: {
+          total_clips_requested: numClips,
+          total_clips_created: clips.length,
+          target_duration: clipDuration,
+          platform: 'tiktok',
+          demo_mode: true
+        }
+      });
+    }
     
     console.log('Video downloaded, extracting audio...');
     
