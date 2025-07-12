@@ -1,0 +1,39 @@
+steps:
+  # Build frontend
+  - name: 'node:18'
+    entrypoint: npm
+    args: ['install']
+    dir: 'frontend'
+
+  - name: 'node:18'
+    entrypoint: npm
+    args: ['run', 'build']
+    dir: 'frontend'
+
+  # Build backend
+  - name: 'node:18'
+    entrypoint: npm
+    args: ['install']
+    dir: 'server'
+
+  # Deploy backend to App Engine
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - app
+      - deploy
+      - app.yaml
+      - --version=$SHORT_SHA
+      - --project=$PROJECT_ID
+      - --quiet
+
+  # Deploy frontend to App Engine
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - app
+      - deploy
+      - frontend-app.yaml
+      - --version=$SHORT_SHA
+      - --project=$PROJECT_ID
+      - --quiet
+
+timeout: '1200s' 

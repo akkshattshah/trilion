@@ -1,0 +1,31 @@
+runtime: nodejs18
+service: trilion-frontend
+
+env_variables:
+  NODE_ENV: production
+  REACT_APP_API_URL: https://trilion-backend-dot-YOUR_PROJECT_ID.REGION.r.appspot.com
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 5
+
+resources:
+  cpu: 0.5
+  memory_gb: 1
+  disk_size_gb: 5
+
+handlers:
+  - url: /static
+    static_dir: build/static
+    secure: always
+
+  - url: /(.*\..+)$
+    static_files: build/\1
+    upload: build/(.*\..+)$
+    secure: always
+
+  - url: /.*
+    static_files: build/index.html
+    upload: build/index.html
+    secure: always 

@@ -57,6 +57,45 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Range']
 }));
 
+// Content Security Policy middleware
+app.use((req, res, next) => {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  
+  if (isDevelopment) {
+    // More permissive CSP for development
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: https: blob:; " +
+      "connect-src 'self' https://trilion-backend-bojb.onrender.com https://api.openai.com https://api.anthropic.com ws: wss: http://localhost:*; " +
+      "media-src 'self' https: blob:; " +
+      "frame-src 'self'; " +
+      "worker-src 'self' blob:; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  } else {
+    // Stricter CSP for production
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self' https://trilion-backend-bojb.onrender.com https://api.openai.com https://api.anthropic.com; " +
+      "media-src 'self' https:; " +
+      "frame-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
