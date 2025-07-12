@@ -7,4 +7,13 @@ tqdm>=4.65.0
 pydub>=0.25.1
 
 # OpenAI Whisper for transcription
-openai-whisper>=20231117 
+openai-whisper>=20231117
+
+# Video processing (lightweight versions)
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# AI/ML packages (CPU-only versions)
+torch>=2.0.0+cpu
+torchaudio>=2.0.0+cpu
+transformers>=4.30.0 

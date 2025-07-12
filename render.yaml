@@ -3,7 +3,10 @@ services:
   - type: web
     name: trilion-backend
     env: node
-    buildCommand: npm install && cd server && npm install
+    buildCommand: |
+      npm install && cd server && npm install
+      pip install --upgrade pip setuptools wheel || true
+      pip install -r server/requirements-render.txt || echo "Python dependencies failed, continuing with Node.js only"
     startCommand: cd server && node index.js
     envVars:
       - key: NODE_ENV
