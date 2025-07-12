@@ -10,6 +10,7 @@ const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const { spawn } = require('child_process');
+const youtubeDl = require('youtube-dl-exec');
 
 // Initialize AI clients only when needed
 let openai = null;
@@ -64,12 +65,45 @@ if (!fs.existsSync(mediaDir)) {
   fs.mkdirSync(mediaDir, { recursive: true });
 }
 
-// Helper function to download video using ytdl-core with enhanced error handling
+// Helper function to download video with fallback methods
 async function downloadVideo(ytLink, outputPath) {
-  return new Promise((resolve, reject) => {
-    console.log(`Downloading video from: ${ytLink}`);
+  console.log(`Downloading video from: ${ytLink}`);
+  
+  // Method 1: Try ytdl-core first
+  try {
+    console.log('Attempting download with ytdl-core...');
+    await downloadWithYtdlCore(ytLink, outputPath);
+    console.log('Video download completed with ytdl-core');
+    return;
+  } catch (ytdlError) {
+    console.error('ytdl-core failed:', ytdlError.message);
     
-    // Enhanced options for better compatibility
+    // Method 2: Try youtube-dl as fallback
+    try {
+      console.log('Attempting download with youtube-dl...');
+      await downloadWithYoutubeDl(ytLink, outputPath);
+      console.log('Video download completed with youtube-dl');
+      return;
+    } catch (youtubeDlError) {
+      console.error('youtube-dl failed:', youtubeDlError.message);
+      
+      // Method 3: Try alternative ytdl-core options
+      try {
+        console.log('Attempting download with alternative ytdl-core options...');
+        await downloadWithAlternativeYtdl(ytLink, outputPath);
+        console.log('Video download completed with alternative options');
+        return;
+      } catch (altError) {
+        console.error('All download methods failed');
+        throw new Error(`All download methods failed. The video may be unavailable, private, or region-restricted. Please try a different YouTube video.`);
+      }
+    }
+  }
+}
+
+// Method 1: ytdl-core with enhanced options
+async function downloadWithYtdlCore(ytLink, outputPath) {
+  return new Promise((resolve, reject) => {
     const options = {
       quality: 'highestaudio',
       filter: 'audioonly',
@@ -82,44 +116,88 @@ async function downloadVideo(ytLink, outputPath) {
     
     try {
       const video = ytdl(ytLink, options);
-      
       const writeStream = fs.createWriteStream(outputPath);
       
       video.pipe(writeStream);
       
-      video.on('end', () => {
-        console.log('Video download completed');
-        resolve();
-      });
-      
+      video.on('end', () => resolve());
       video.on('error', (error) => {
-        console.error('Video download error:', error);
-        
-        // Enhanced error handling for common YouTube issues
         if (error.statusCode === 410) {
-          reject(new Error('Video is unavailable or private. Please check the YouTube link and try again.'));
+          reject(new Error('Video is unavailable or private'));
         } else if (error.statusCode === 403) {
-          reject(new Error('Access denied. This video may be age-restricted or region-blocked.'));
+          reject(new Error('Access denied - video may be age-restricted'));
         } else if (error.statusCode === 404) {
-          reject(new Error('Video not found. Please check the YouTube link.'));
+          reject(new Error('Video not found'));
         } else {
-          reject(new Error(`YouTube download failed: ${error.message}`));
+          reject(new Error(`ytdl-core error: ${error.message}`));
         }
       });
       
       writeStream.on('error', (error) => {
-        console.error('Write stream error:', error);
-        reject(new Error(`File write error: ${error.message}`));
+        reject(new Error(`Write error: ${error.message}`));
       });
       
-      // Add timeout
       setTimeout(() => {
         video.destroy();
-        reject(new Error('Download timeout - video may be too large or unavailable'));
-      }, 300000); // 5 minutes timeout
+        reject(new Error('Download timeout'));
+      }, 300000);
       
     } catch (error) {
-      reject(new Error(`Failed to start download: ${error.message}`));
+      reject(new Error(`ytdl-core initialization failed: ${error.message}`));
+    }
+  });
+}
+
+// Method 2: youtube-dl fallback
+async function downloadWithYoutubeDl(ytLink, outputPath) {
+  try {
+    await youtubeDl(ytLink, {
+      output: outputPath,
+      format: 'bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio',
+      extractAudio: true,
+      audioFormat: 'mp3',
+      audioQuality: '0'
+    });
+  } catch (error) {
+    throw new Error(`youtube-dl failed: ${error.message}`);
+  }
+}
+
+// Method 3: Alternative ytdl-core options
+async function downloadWithAlternativeYtdl(ytLink, outputPath) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      quality: 'lowestaudio',
+      filter: 'audioonly',
+      requestOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }
+    };
+    
+    try {
+      const video = ytdl(ytLink, options);
+      const writeStream = fs.createWriteStream(outputPath);
+      
+      video.pipe(writeStream);
+      
+      video.on('end', () => resolve());
+      video.on('error', (error) => {
+        reject(new Error(`Alternative ytdl-core failed: ${error.message}`));
+      });
+      
+      writeStream.on('error', (error) => {
+        reject(new Error(`Write error: ${error.message}`));
+      });
+      
+      setTimeout(() => {
+        video.destroy();
+        reject(new Error('Alternative download timeout'));
+      }, 300000);
+      
+    } catch (error) {
+      reject(new Error(`Alternative ytdl-core initialization failed: ${error.message}`));
     }
   });
 }
@@ -260,7 +338,7 @@ app.get('/test', (req, res) => {
   });
 });
 
-// YouTube link validation endpoint
+// YouTube link validation endpoint with multiple methods
 app.post('/validate-youtube', async (req, res) => {
   const { ytLink } = req.body;
   
@@ -271,33 +349,76 @@ app.post('/validate-youtube', async (req, res) => {
   try {
     console.log(`Validating YouTube link: ${ytLink}`);
     
-    // Try to get video info without downloading
-    const info = await ytdl.getInfo(ytLink);
-    
-    res.json({
-      valid: true,
-      title: info.videoDetails.title,
-      duration: info.videoDetails.lengthSeconds,
-      author: info.videoDetails.author.name,
-      viewCount: info.videoDetails.viewCount,
-      message: 'YouTube link is valid and accessible'
-    });
+    // Method 1: Try ytdl-core first
+    try {
+      const info = await ytdl.getInfo(ytLink);
+      
+      return res.json({
+        valid: true,
+        title: info.videoDetails.title,
+        duration: info.videoDetails.lengthSeconds,
+        author: info.videoDetails.author.name,
+        viewCount: info.videoDetails.viewCount,
+        message: 'YouTube link is valid and accessible',
+        method: 'ytdl-core'
+      });
+    } catch (ytdlError) {
+      console.log('ytdl-core validation failed, trying youtube-dl...');
+      
+      // Method 2: Try youtube-dl as fallback
+      try {
+        const info = await youtubeDl(ytLink, {
+          dumpSingleJson: true,
+          noCheckCertificates: true,
+          noWarnings: true,
+          preferFreeFormats: true
+        });
+        
+        return res.json({
+          valid: true,
+          title: info.title,
+          duration: info.duration,
+          uploader: info.uploader,
+          viewCount: info.view_count,
+          message: 'YouTube link is valid and accessible',
+          method: 'youtube-dl'
+        });
+      } catch (youtubeDlError) {
+        console.log('youtube-dl validation also failed');
+        
+        // Both methods failed
+        let errorMessage = 'Video is unavailable or has restrictions';
+        if (ytdlError.statusCode === 410) {
+          errorMessage = 'Video is unavailable or private';
+        } else if (ytdlError.statusCode === 403) {
+          errorMessage = 'Video is age-restricted or region-blocked';
+        } else if (ytdlError.statusCode === 404) {
+          errorMessage = 'Video not found';
+        }
+        
+        return res.status(400).json({
+          valid: false,
+          error: errorMessage,
+          details: 'Both validation methods failed',
+          suggestions: [
+            'Try a different YouTube video',
+            'Check if the video is public and accessible',
+            'Use demo mode to test the interface'
+          ]
+        });
+      }
+    }
   } catch (error) {
     console.error('YouTube validation error:', error);
     
-    let errorMessage = 'YouTube link validation failed';
-    if (error.statusCode === 410) {
-      errorMessage = 'Video is unavailable or private';
-    } else if (error.statusCode === 403) {
-      errorMessage = 'Video is age-restricted or region-blocked';
-    } else if (error.statusCode === 404) {
-      errorMessage = 'Video not found';
-    }
-    
     res.status(400).json({
       valid: false,
-      error: errorMessage,
-      details: error.message
+      error: 'YouTube link validation failed',
+      details: error.message,
+      suggestions: [
+        'Try a different YouTube video',
+        'Use demo mode to test the interface'
+      ]
     });
   }
 });
@@ -361,23 +482,25 @@ app.post('/analyze', async (req, res) => {
       console.log('Starting video download...');
       
       try {
-        // Download video using ytdl-core
+        // Download video using multiple fallback methods
         await downloadVideo(ytLink, videoPath);
         videoDownloaded = true;
         console.log('Video downloaded successfully');
       } catch (downloadError) {
         console.error('Video download failed:', downloadError.message);
         
-        // Return helpful error message
+        // Return helpful error message with more specific guidance
         return res.status(400).json({
           error: 'Video download failed',
           details: downloadError.message,
           suggestions: [
-            'Check if the YouTube link is valid and accessible',
-            'The video might be private, age-restricted, or region-blocked',
-            'Try a different YouTube video',
-            'Contact support if the issue persists'
-          ]
+            'Try a different YouTube video (some videos have restrictions)',
+            'Check if the video is public and not age-restricted',
+            'Use demo mode to test the interface without downloading',
+            'Try shorter videos (under 10 minutes) for better compatibility',
+            'Contact support if the issue persists with multiple videos'
+          ],
+          alternative: 'Use demo mode to test the interface while we work on compatibility'
         });
       }
     }
