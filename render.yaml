@@ -5,7 +5,8 @@ services:
     env: node
     buildCommand: |
       cd server && npm install
-      pip install -r requirements-render.txt
+      pip install --upgrade pip setuptools wheel || true
+      pip install -r requirements-render.txt || echo "Python dependencies failed, continuing with Node.js only"
     startCommand: cd server && node index.js
     envVars:
       - key: NODE_ENV
